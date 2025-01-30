@@ -46,8 +46,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const recognition = new SpeechRecognition();
     recognition.lang = "ko-KR"; 
-    recognition.interimResults = false; 
+    recognition.continuous = true; // 음성 인식을 지속적으로 수행하도록 설정
+    recognition.interimResults = true; // 실시간으로 음성을 텍스트로 변환
     recognition.maxAlternatives = 1;
+
+    let finalTranscript = ""; // 최종 결과 저장
+    let silenceTimeout; // 타이머를 설정할 변수
 
     // 음성 인식 시작
     startBtn.addEventListener("click", () => {
@@ -57,23 +61,41 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 음성 인식 결과 처리
     recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        
-        let savedTexts = JSON.parse(localStorage.getItem("savedTexts")) || [];
-        savedTexts.push(transcript); // 새로운 텍스트 추가
-        localStorage.setItem("savedTexts", JSON.stringify(savedTexts));
+        const transcript = event.results[event.results.length - 1][0].transcript; // 마지막 결과
 
-        loadSavedTexts(); // 목록 다시 불러오기
-    };
+        if (event.results[event.results.length - 1].isFinal) { // 음성이 종료되었을 때만 저장
+            finalTranscript += transcript + " "; // 최종 텍스트에 추가
+            let savedTexts = JSON.parse(localStorage.getItem("savedTexts")) || [];
+            savedTexts.push(finalTranscript); // 새로운 텍스트 추가
+            localStorage.setItem("savedTexts", JSON.stringify(savedTexts));
 
-    // 오류 처리
-    recognition.onerror = (event) => {
-        console.log("오류 발생:", event.error);
+            finalTranscript = ""; // 최종 텍스트 초기화
+            loadSavedTexts(); // 목록 다시 불러오기
+
+            // 타이머 초기화 (1분 후 텍스트 저장)
+            clearTimeout(silenceTimeout);
+            silenceTimeout = setTimeout(() => {
+                saveFinalText(); // 1분 후 텍스트 저장
+            }, 60000); // 60,000ms = 1분
+        }
     };
 
     // 음성 인식 종료 이벤트
     recognition.onend = () => {
         startBtn.disabled = false;
+    };
+
+    // 1분 후 텍스트 저장
+    function saveFinalText() {
+        let savedTexts = JSON.parse(localStorage.getItem("savedTexts")) || [];
+        savedTexts.push(finalTranscript); // 최종 텍스트 추가
+        localStorage.setItem("savedTexts", JSON.stringify(savedTexts));
+        loadSavedTexts(); // 목록 다시 불러오기
+    }
+
+    // 오류 처리
+    recognition.onerror = (event) => {
+        console.log("오류 발생:", event.error);
     };
 
     // 저장된 텍스트 목록 불러오기
