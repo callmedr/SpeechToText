@@ -83,6 +83,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // 음성 인식 종료 이벤트
     recognition.onend = () => {
         startBtn.disabled = false;
+        recognition.start(); // 음성이 끝나면 다시 음성 인식 시작
     };
 
     // 1분 후 텍스트 저장
